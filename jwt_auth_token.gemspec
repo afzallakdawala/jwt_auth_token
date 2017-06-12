@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.name        = 'jwt_auth_token'
-  s.version     = '1.0.0'
+  s.version     = '1.0.2'
   s.date        = '2017-06-12'
   s.summary     = "Json web token, setting data to header"
   s.description = ""
