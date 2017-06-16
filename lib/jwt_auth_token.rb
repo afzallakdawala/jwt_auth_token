@@ -1,6 +1,7 @@
 module JwtAuthToken
 end
 require 'jwt'
+require 'rest-client'
 def jwt_hmac_secret
   @_jwt_hmac_secret ||= Rails.application.secrets[:secret_key_base]
 end
