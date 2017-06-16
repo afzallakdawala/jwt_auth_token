@@ -12,5 +12,5 @@ Gem::Specification.new do |s|
     'http://rubygems.org/gems/jwt_auth_token'
   s.license       = 'MIT'
   s.post_install_message = "Thanks for installing!"
-  %w(jwt moped).map {|gem| s.add_runtime_dependency gem}
+  %w(jwt moped, rest-client).map {|gem| s.add_runtime_dependency gem}
 end
