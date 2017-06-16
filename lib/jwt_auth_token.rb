@@ -48,16 +48,19 @@ def validate_keys
 end
 
 ROUTES = {}
-Rails.application.routes.routes.map do |route|
-  path = route.path.spec.to_s.gsub(/\(\.:format\)/, "").gsub(/:[a-zA-Z_]+/, "1")
-  next if path.include?("rails")
-  port = ":#{route.defaults[:port]}" if route.defaults[:port]
-  complete_url = "#{route.defaults[:host]}#{port}#{path}"
-  verb = %W{ GET POST PUT PATCH DELETE }.grep(route.verb).first.downcase.to_sym rescue nil
-  ROUTES[route.name] = { path: path, verb: verb, url: complete_url}
-end
-
 def restClientUrl(url, payload)
+  @_get_routers ||= get_routers
   _req = OpenStruct.new(ROUTES[url.to_sym])
   RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
+end
+
+def get_routers
+  Rails.application.routes.routes.map do |route|
+    path = route.path.spec.to_s.gsub(/\(\.:format\)/, "").gsub(/:[a-zA-Z_]+/, "1")
+    next if path.include?("rails")
+    port = ":#{route.defaults[:port]}" if route.defaults[:port]
+    complete_url = "#{route.defaults[:host]}#{port}#{path}"
+    verb = %W{ GET POST PUT PATCH DELETE }.grep(route.verb).first.downcase.to_sym rescue nil
+    ROUTES[route.name] = { path: path, verb: verb, url: complete_url}
+  end
 end
