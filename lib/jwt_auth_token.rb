@@ -31,7 +31,7 @@ def current_user
 end
 
 def header_token
-  @_header_token ||= request.headers[header_name]
+  @_header_token ||= request.headers[header_name] rescue nil
 end
 
 def is_valid_token?
@@ -48,10 +48,11 @@ def validate_keys
 end
 
 ROUTES = {}
-def restClientUrl(url, payload)
+def restClientUrl(url, payload = {})
   @_get_routers ||= get_routers
-  _req = OpenStruct.new(ROUTES[url.to_sym])
-  RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
+  _req = OpenStruct.new(ROUTES[url])
+  data = RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
+  {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}
 end
 
 def get_routers
@@ -61,6 +62,6 @@ def get_routers
     port = ":#{route.defaults[:port]}" if route.defaults[:port]
     complete_url = "#{route.defaults[:host]}#{port}#{path}"
     verb = %W{ GET POST PUT PATCH DELETE }.grep(route.verb).first.downcase.to_sym rescue nil
-    ROUTES[route.name] = { path: path, verb: verb, url: complete_url}
+    ROUTES["#{route.name}_url"] = { path: path, verb: verb, url: complete_url}
   end
 end
