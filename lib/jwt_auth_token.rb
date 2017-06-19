@@ -66,3 +66,30 @@ def get_routers
     ROUTES["#{route.name}_url"] = { path: path, verb: verb, url: complete_url}
   end
 end
+
+def services_development_urls
+  @_services_development_urls ||= {user_host_service: {url: "http://localhost", port: 3000},
+          mocktest_host_service: {url: "http://localhost", port: 3002},
+          practice_host_service: {url: "http://localhost", port: 3001},
+          payment_host_service: {url: "http://localhost", port: 3003},
+          content_host_service: {url: "http://localhost", port: 3004},          
+          }
+end
+
+def services_production_urls
+  @_services_production_urls ||= {user_host_service: {url: "http://user.embibe.com", port: nil},
+          mocktest_host_service: {url: "http://mocktest.embibe.com", port: nil},
+          practice_host_service: {url: "http://practice.embibe.com", port: nil},
+          payment_host_service: {url: "http://payment.embibe.com", port: nil},
+          content_host_service: {url: "http://content.embibe.com", port: nil},          
+          }
+
+end
+
+def generate_third_party_url
+  urls = send("services_#{Rails.env}_urls")
+  urls.map {|key,values| values.map {|k,v| define_method("#{key}_#{k}") { v }}}
+end
+generate_third_party_url
+
+
