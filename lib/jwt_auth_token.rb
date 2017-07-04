@@ -93,3 +93,27 @@ end
 generate_third_party_url
 
 
+def required_organization
+  @organization ||= Organization.find_by(namespace: params[:namespace], language: params[:language])
+  render_error("Organization or Language not found", 404) if @organization.nil?
+end
+
+def render_error(msg, status)
+  render json: {"error" => msg, :status => status}, :status => status
+end
+
+def redis_set(batch_set)
+  batch_set.each {|key, value| d}
+end
+
+def redis_get(key)
+  (JSON.parse($redis.get(key)) || {}) rescue {}
+end
+
+def redis_data(key, value)
+  {key: key, value: value}
+end
+
+def redis_process
+  redis_set(_batch_events)
+end
