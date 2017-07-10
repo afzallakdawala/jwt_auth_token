@@ -2,6 +2,11 @@ module JwtAuthToken
 end
 require 'jwt'
 require 'rest-client'
+
+def current_micro_service_name
+  @_current_micro_service_name ||= Rails.configuration.database_configuration[Rails.env]['mongodb_logger']['application_name']  
+end
+
 def jwt_hmac_secret
   @_jwt_hmac_secret ||= Rails.application.secrets[:secret_key_base]
 end
@@ -52,6 +57,8 @@ ROUTES = {}
 def restClientUrl(url, payload = {})
   @_get_routers ||= get_routers
   _req = OpenStruct.new(ROUTES[url])
+  payload = (JSON.parse(payload.to_json)).with_indifferent_access
+  payload[:referer_service] = current_micro_service_name
   data = RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
   {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}
 end
@@ -68,20 +75,24 @@ def get_routers
 end
 
 def services_development_urls
-  @_services_development_urls ||= {user_host_service: {url: "http://localhost", port: 3000},
-          mocktest_host_service: {url: "http://localhost", port: 3002},
-          practice_host_service: {url: "http://localhost", port: 3001},
-          payment_host_service: {url: "http://localhost", port: 3003},
-          content_host_service: {url: "http://localhost", port: 3004},          
+  @_services_development_urls ||= {user: {url: "http://localhost", port: 3000},
+          practice: {url: "http://localhost", port: 3001},
+          mocktest: {url: "http://localhost", port: 3002},
+          payment: {url: "http://localhost", port: 3003},
+          content: {url: "http://localhost", port: 3004},          
           }
 end
 
+def services_uri
+  @_services_uri ||= send("services_#{Rails.env}_urls")
+end
+
 def services_production_urls
-  @_services_production_urls ||= {user_host_service: {url: "http://user.embibe.com", port: nil},
-          mocktest_host_service: {url: "http://mocktest.embibe.com", port: nil},
-          practice_host_service: {url: "http://practice.embibe.com", port: nil},
-          payment_host_service: {url: "http://payment.embibe.com", port: nil},
-          content_host_service: {url: "http://content.embibe.com", port: nil},          
+  @_services_production_urls ||= {user: {url: "http://user.embibe.com", port: nil},
+          mocktest: {url: "http://mocktest.embibe.com", port: nil},
+          practice: {url: "http://practice.embibe.com", port: nil},
+          payment: {url: "http://payment.embibe.com", port: nil},
+          content: {url: "http://content.embibe.com", port: nil},          
           }
 
 end
@@ -116,4 +127,34 @@ end
 
 def redis_process
   redis_set(_batch_events)
+end
+
+def add_custom_params_to_logger
+  Rails.logger.add_metadata(custom_meta_data_log) if Rails.logger.respond_to?(:add_metadata)  
+end
+
+def user_agent_meta_log
+  ua = DeviceDetector.new(request.user_agent)
+  device_info = [:name, :full_version, :user_agent, :os_name, :os_full_version, :device_name, :device_brand, :device_type, :known?, :bot?, :bot_name]
+  info_data = {url: request.url, referer: request.referer}  
+  ua.methods.select {|c| info_data[c] = ua.__send__(c) if device_info.include?(c) }
+  info_data
+end
+
+def custom_params_meta_log
+  {c_source: params[:C_source], c_id: params[:C_id]}
+end
+
+def common_params_meta_log
+  {referer_service: params[:referer_service]}
+end
+
+def custom_meta_data_log
+  user_meta_log.merge!(user_agent_meta_log).merge!(custom_params_meta_log).merge!(common_params_meta_log)
+end
+
+def user_meta_log
+  return {} unless current_user
+  user_meta_data = {}
+  user_meta_data[:user_id] = current_user.id
 end

@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.name        = 'jwt_auth_token'
-  s.version     = '1.0.8'
+  s.version     = '1.0.9'
   s.date        = '2017-06-12'
   s.summary     = "Json web token, setting data to header"
   s.description = ""
@@ -12,5 +12,5 @@ Gem::Specification.new do |s|
     'http://rubygems.org/gems/jwt_auth_token'
   s.license       = 'MIT'
   s.post_install_message = "Thanks for installing!"
-  %w(jwt moped rest-client).map {|gem| s.add_runtime_dependency gem}
+  %w(jwt moped rest-client device_detector).map {|gem| s.add_runtime_dependency gem}
 end
