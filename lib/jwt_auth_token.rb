@@ -2,6 +2,7 @@ module JwtAuthToken
 end
 require 'jwt'
 require 'rest-client'
+require 'csv'
 
 def current_micro_service_name
   @_current_micro_service_name ||= Rails.configuration.database_configuration[Rails.env]['mongodb_logger']['application_name']  
@@ -58,9 +59,14 @@ def restClientUrl(url, payload = {})
   @_get_routers ||= get_routers
   _req = OpenStruct.new(ROUTES[url])
   payload = (JSON.parse(payload.to_json)).with_indifferent_access
-  payload[:referer_service] = current_micro_service_name
-  data = RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
-  {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}
+  payload[:referer_service] = current_micro_service_name  
+  begin
+    data = RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
+    data = {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}    
+  rescue RestClient::Unauthorized, RestClient::Forbidden => err
+    data = JSON.parse(err.response)
+  end
+  data
 end
 
 def get_routers
@@ -70,7 +76,19 @@ def get_routers
     port = ":#{route.defaults[:port]}" if route.defaults[:port]
     complete_url = "#{route.defaults[:host]}#{port}#{path}"
     verb = %W{ GET POST PUT PATCH DELETE }.grep(route.verb).first.downcase.to_sym rescue nil
-    ROUTES["#{route.name}_url"] = { path: path, verb: verb, url: complete_url}
+    route_name = route.defaults[:controller].gsub("/", "_") rescue route.name
+    ROUTES["#{route_name}_#{verb}_url"] = { path: path, verb: verb, url: complete_url}.merge(route.defaults)
+  end
+  ROUTES.delete(ROUTES.first.first)
+end
+
+def export_urls_csv
+  get_routers
+  CSV.open("tmp/route_list_#{Rails.env}.csv", 'w') do |csv|
+    csv << ROUTES.first[1].keys.map(&:to_s).unshift("alias")
+    ROUTES.each do |key, values|
+      csv << values.values.map(&:to_s).unshift(key)
+    end    
   end
 end
 
@@ -99,7 +117,7 @@ end
 
 def generate_third_party_url
   urls = send("services_#{Rails.env}_urls")
-  urls.map {|key,values| values.map {|k,v| define_method("#{key}_#{k}") { v }}}
+  urls.map {|key,values| values.map {|k,v| define_method("#{key}_host_service_#{k}") { v }}}
 end
 generate_third_party_url
 
@@ -110,7 +128,7 @@ def required_organization
 end
 
 def render_error(msg, status)
-  render json: {"error" => msg, :status => status}, :status => status
+  render json: {:error => msg, :status => status}, :status => status
 end
 
 def redis_set(batch_set)
