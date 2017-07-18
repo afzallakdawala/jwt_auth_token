@@ -85,11 +85,26 @@ end
 def export_urls_csv
   get_routers
   CSV.open("tmp/route_list_#{Rails.env}.csv", 'w') do |csv|
-    csv << ROUTES.first[1].keys.map(&:to_s).unshift("alias")
+    csv << [ROUTES.first[1].keys.map(&:to_s).unshift("alias") << ["development_url", "production_url"]].flatten
     ROUTES.each do |key, values|
-      csv << values.values.map(&:to_s).unshift(key)
+      next if key.include?("rails") || key.include?("__url")
+      dev_url = "#{current_service_host_service_url}:#{current_service_host_service_port}#{values.values[2]}"
+      prod_url = "#{prod_domain}#{values.values[2]}"
+      csv << values.values.map(&:to_s).unshift(key) + [dev_url] + [prod_url]
     end    
   end
+end
+
+def prod_domain
+  "#{current_micro_service_name.split('_')[0]}.embibe.com"
+end
+
+def current_service_host_service_url
+  eval("#{current_micro_service_name.split('_')[0]}_host_service_url")
+end
+
+def current_service_host_service_port
+  eval("#{current_micro_service_name.split('_')[0]}_host_service_port")
 end
 
 def services_development_urls
