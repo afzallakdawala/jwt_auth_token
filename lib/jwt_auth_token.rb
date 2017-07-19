@@ -1,6 +1,4 @@
-require 'jwt'
-require 'rest-client'
-require 'csv'
+%w(jwt rest-client csv user_helper router_helper common_helper device_detector).each { |dependency| require dependency }
 
 module JwtAuthToken
 
@@ -36,5 +34,4 @@ module JwtAuthToken
 
 end
 
-include JwtAuthToken, UserHelper, RouterHelper, CommonHelper
-generate_third_party_url
+extend JwtAuthToken, UserHelper, RouterHelper, CommonHelper

@@ -86,3 +86,6 @@ module RouterHelper
   end
 
 end
+
+include RouterHelper
+generate_third_party_url
