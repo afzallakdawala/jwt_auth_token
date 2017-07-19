@@ -59,12 +59,14 @@ def restClientUrl(url, payload = {})
   @_get_routers ||= get_routers
   _req = OpenStruct.new(ROUTES[url])
   payload = (JSON.parse(payload.to_json)).with_indifferent_access
-  payload[:referer_service] = current_micro_service_name  
+  payload[:referer_service] = current_micro_service_name
   begin
     data = RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{header_name}" => header_token})
-    data = {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}    
+    data = {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}
   rescue RestClient::Unauthorized, RestClient::Forbidden => err
     data = JSON.parse(err.response)
+  rescue RestClient::ResourceNotFound => err
+    data = {code: 404, error: "Url not found #{_req.url}" }
   end
   data
 end
@@ -77,10 +79,14 @@ def get_routers
     complete_url = "#{route.defaults[:host]}#{port}#{path}"
     verb = %W{ GET POST PUT PATCH DELETE }.grep(route.verb).first.downcase.to_sym rescue nil
     route_name = route.defaults[:controller].gsub("/", "_") rescue route.name
-    ROUTES["#{route_name}_#{verb}_url"] = { path: path, verb: verb, url: complete_url}.merge(route.defaults)
+    alias_should_be = route.defaults[:alias_should_be]
+    final_key = "#{alias_should_be}_#{route_name}_#{verb}_url"
+    ROUTES[final_key] = { path: path, verb: verb, url: complete_url}.merge(route.defaults)
   end
   ROUTES.delete(ROUTES.first.first)
 end
+
+#practice_v1_bundles_get_url
 
 def export_urls_csv
   get_routers
