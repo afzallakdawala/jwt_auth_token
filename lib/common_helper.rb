@@ -57,4 +57,5 @@ module CommonHelper
     user_meta_data = {}
     user_meta_data[:user_id] = current_user.id
   end
+
 end

@@ -13,11 +13,17 @@ module RouterHelper
       data = JSON.parse(err.response)
     rescue RestClient::ResourceNotFound => err
       data = {code: 404, error: "Url not found #{_req.url}" }
+    rescue RestClient::InternalServerError => err
+      data = {code: 500, error: "Url not found #{_req.url}" }  
     end
     data
   end
 
   def get_routers
+    @_get_routers ||= set_routers
+  end
+
+  def set_routers
     Rails.application.routes.routes.map do |route|
       path = route.path.spec.to_s.gsub(/\(\.:format\)/, "").gsub(/:[a-zA-Z_]+/, "1")
       next if path.include?("rails")
@@ -29,7 +35,7 @@ module RouterHelper
       final_key = "#{alias_should_be}_#{route_name}_#{verb}_url"
       ROUTES[final_key] = { path: path, verb: verb, url: complete_url}.merge(route.defaults)
     end
-    ROUTES.delete(ROUTES.first.first)
+    ROUTES.delete(ROUTES.first.first)    
   end
 
   def export_urls_csv
@@ -85,4 +91,22 @@ module RouterHelper
     urls.map {|key,values| values.map {|k,v| define_method("#{key}_host_service_#{k}") { v }}}
   end
 
+  def url_method_generation
+    get_routers
+    ROUTES.each do |_alias, values|
+      puts _alias
+      puts "================="
+     define_method(_alias) { |params| restClientUrl(_alias, params) } 
+    end
+  end
+
 end
+
+
+#{}"practice_v1_bundles_get_url"=>{:path=>"/v1/bundles/1", :verb=>:get, :url=>"http://localhost:3001/v1/bundles/1", :action=>"show", :host=>"http://localhost", :port=>3001, :alias_should_be=>"practice_v1", :controller=>"bundles"},
+
+
+
+
+
+

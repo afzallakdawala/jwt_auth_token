@@ -34,5 +34,5 @@ module JwtAuthToken
 
 end
 
-extend JwtAuthToken, UserHelper, RouterHelper, CommonHelper
+include JwtAuthToken, UserHelper, RouterHelper, CommonHelper
 generate_third_party_url
