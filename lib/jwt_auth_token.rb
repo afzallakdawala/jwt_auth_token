@@ -32,6 +32,10 @@ module JwtAuthToken
     end  
   end
 
+  def validate_keys
+    !!@_validate_keys ||= (@decoded_token.keys && ["id", "email"]).any?
+  end
+
 end
 
 include JwtAuthToken, UserHelper, RouterHelper, CommonHelper
