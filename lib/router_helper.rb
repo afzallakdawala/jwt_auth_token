@@ -1,13 +1,13 @@
-ROUTES = {}
 module RouterHelper
 
-  def restClientUrl(url, payload = {})
-    @_get_routers ||= get_routers
-    _req = OpenStruct.new(ROUTES[url])
-    payload = (JSON.parse(payload.to_json)).with_indifferent_access
+  def rest_client_url(url, _payload = {})
+    payload = _payload[:params] || {}
     payload[:referer_service] = current_micro_service_name
+    headers = {"#{jwt_header_name}" => jwt_header_token}
+    headers = headers.merge(_payload[:headers]) if _payload[:headers]
+    verb = _payload[:method]
     begin
-      data = RestClient::Request.execute(method: _req.verb, url: _req.url, payload: payload, headers: { "#{jwt_header_name}" => jwt_header_token})
+      data = RestClient::Request.execute(method: verb, url: url, payload: payload, headers: headers)
       data = {code: data.code, data: JSON.parse(data.body), headers: data.headers, cookies: data.cookies}
     rescue RestClient::Unauthorized, RestClient::Forbidden => err
       data = JSON.parse(err.response)
@@ -17,50 +17,6 @@ module RouterHelper
       data = {code: 500, error: "Url not found #{_req.url}" }  
     end
     data
-  end
-
-  def get_routers
-    @_get_routers ||= set_routers
-  end
-
-  def set_routers
-    Rails.application.routes.routes.map do |route|
-      path = route.path.spec.to_s.gsub(/\(\.:format\)/, "").gsub(/:[a-zA-Z_]+/, "1")
-      next if path.include?("rails")
-      port = ":#{route.defaults[:port]}" if route.defaults[:port]
-      complete_url = "#{route.defaults[:host]}#{port}#{path}"
-      verb = %W{ GET POST PUT PATCH DELETE }.grep(route.verb).first.downcase.to_sym rescue nil
-      route_name = route.defaults[:controller].gsub("/", "_") rescue route.name
-      alias_should_be = route.defaults[:alias_should_be]
-      final_key = "#{alias_should_be}_#{route_name}_#{verb}_url"
-      ROUTES[final_key] = { path: path, verb: verb, url: complete_url}.merge(route.defaults)
-    end
-    ROUTES.delete(ROUTES.first.first)    
-  end
-
-  def export_urls_csv
-    get_routers
-    CSV.open("tmp/route_list_#{Rails.env}.csv", 'w') do |csv|
-      csv << [ROUTES.first[1].keys.map(&:to_s).unshift("alias") << ["development_url", "production_url"]].flatten
-      ROUTES.each do |key, values|
-        next if key.include?("rails") || key.include?("__url")
-        dev_url = "#{current_service_host_service_url}:#{current_service_host_service_port}#{values.values[2]}"
-        prod_url = "#{prod_domain}#{values.values[2]}"
-        csv << values.values.map(&:to_s).unshift(key) + [dev_url] + [prod_url]
-      end    
-    end
-  end
-
-  def prod_domain
-    "#{current_micro_service_name.split('_')[0]}.embibe.com"
-  end
-
-  def current_service_host_service_url
-    eval("#{current_micro_service_name.split('_')[0]}_host_service_url")
-  end
-
-  def current_service_host_service_port
-    eval("#{current_micro_service_name.split('_')[0]}_host_service_port")
   end
 
   def services_development_urls
@@ -91,22 +47,4 @@ module RouterHelper
     urls.map {|key,values| values.map {|k,v| define_method("#{key}_host_service_#{k}") { v }}}
   end
 
-  def url_method_generation
-    get_routers
-    ROUTES.each do |_alias, values|
-      puts _alias
-      puts "================="
-     define_method(_alias) { |params| restClientUrl(_alias, params) } 
-    end
-  end
-
 end
-
-
-#{}"practice_v1_bundles_get_url"=>{:path=>"/v1/bundles/1", :verb=>:get, :url=>"http://localhost:3001/v1/bundles/1", :action=>"show", :host=>"http://localhost", :port=>3001, :alias_should_be=>"practice_v1", :controller=>"bundles"},
-
-
-
-
-
-
